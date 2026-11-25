@@ -24,10 +24,14 @@ const editorDocument =
   '</style></head><body><div id="page"><main></main></div><div class="canvas-insert"><button class="add-content" data-action="insert" type="button">＋ Add section</button></div><script>' +
   canvasScript +
   "</script></body></html>";
-export function viewerDocument(site: SiteDocument) {
+export function viewerDocument(site: SiteDocument, inFrame = false) {
   return generate(site).document.replace(
     "</head>",
-    () => "<style>" + faces + "</style></head>",
+    () =>
+      (inFrame ? '<base href="about:srcdoc">' : "") +
+      "<style>" +
+      faces +
+      "</style></head>",
   );
 }
 
@@ -100,7 +104,7 @@ export function Canvas({
           ? "allow-popups allow-popups-to-escape-sandbox"
           : "allow-scripts"
       }
-      srcDoc={preview ? viewerDocument(site) : editorDocument}
+      srcDoc={preview ? viewerDocument(site, true) : editorDocument}
     />
   );
 }

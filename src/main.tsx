@@ -1109,7 +1109,7 @@ function PublicSite({ siteId }: { siteId: string }) {
         className="public"
         title={site.title || "Published site"}
         sandbox="allow-popups allow-popups-to-escape-sandbox"
-        srcDoc={viewerDocument(site)}
+        srcDoc={viewerDocument(site, true)}
       />
     );
   return (
