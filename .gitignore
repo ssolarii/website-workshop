@@ -6,3 +6,4 @@ dist/
 .npm-tool/
 .npm-cache/
 test-results/
+.deploy-sol/

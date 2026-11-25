@@ -1191,3 +1191,101 @@ h2 {
     flex-basis: 320px;
   }
 }
+/* Second screen: preview first, supporting panels in a compact side column. */
+.second-screen {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(12px, 1.5vw, 28px);
+}
+.second-screen > header {
+  flex: 0 0 auto;
+  margin-bottom: 16px;
+}
+.screen-panels {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  gap: 16px;
+}
+.screen-panels.has-preview.has-sidebar {
+  grid-template-columns: minmax(0, 1fr) clamp(280px, 28vw, 440px);
+}
+.screen-panels > section {
+  min-height: 0;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+}
+.screen-preview {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+}
+.screen-preview iframe {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  background: var(--surface);
+}
+.screen-panels.has-preview .screen-code,
+.screen-panels.has-preview .screen-qr {
+  grid-column: 2;
+}
+.screen-code {
+  grid-row: 1;
+  overflow: hidden;
+}
+.screen-code pre {
+  height: auto;
+  min-height: 0;
+  flex: 1;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: clamp(12px, 0.9vw, 15px);
+}
+.screen-qr {
+  align-self: stretch;
+  align-items: center;
+  justify-content: center;
+  grid-row: 2;
+}
+.screen-qr img {
+  width: min(100%, 220px, 25vh);
+}
+.screen-qr a {
+  margin-top: 8px;
+}
+.screen-panels:not(:has(.screen-code)) .screen-qr {
+  grid-row: 1 / span 2;
+}
+.screen-panels:not(.has-preview) {
+  max-width: 1100px;
+}
+@media (max-width: 760px) {
+  .second-screen {
+    height: auto;
+    min-height: 100dvh;
+  }
+  .screen-panels.has-preview.has-sidebar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .screen-panels .screen-preview,
+  .screen-panels.has-preview .screen-code,
+  .screen-panels.has-preview .screen-qr {
+    grid-column: 1;
+    grid-row: auto;
+  }
+  .screen-preview iframe {
+    height: 65vh;
+    min-height: 420px;
+  }
+  .screen-code pre {
+    max-height: 40vh;
+  }
+  .screen-qr img {
+    width: 220px;
+  }
+}

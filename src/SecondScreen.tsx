@@ -73,7 +73,9 @@ export function SecondScreen({ session }: { session: string }) {
       {!data ? (
         <p role="status">Waiting for the editor…</p>
       ) : (
-        <main className="screen-panels">
+        <main
+          className={`screen-panels ${panels.preview ? "has-preview" : ""} ${panels.html || panels.qr ? "has-sidebar" : ""}`}
+        >
           {panels.preview && (
             <section className="screen-preview">
               <h2>Preview</h2>
@@ -104,7 +106,7 @@ export function SecondScreen({ session }: { session: string }) {
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    {data.published}
+                    Open site
                   </a>
                 </>
               ) : (
