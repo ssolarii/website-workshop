@@ -245,18 +245,24 @@ export function Inspector(props: Props) {
       setPath(["main", "image"]);
   }, [props.formatEntry]);
   useEffect(() => {
-    if (page === "main" || path.length === 1) return;
-    if (
-      !currentSection ||
-      (["image", "image-url", "gallery"].includes(page) &&
-        selected?.type !== "image") ||
-      (page === "link" && selected?.type !== "link") ||
-      (["text", "font", "color"].includes(page) &&
-        (!selected || selected.type === "image" || selected.type === "divider"))
-    ) {
-      setPath(["main"]);
-    }
-  }, [page, path.length, selection, currentSection, selected]);
+    setPath((current) => {
+      const page = current.at(-1);
+      if (!page || page === "main") return current;
+      if (!currentSection) return ["main"];
+      if (
+        ["image", "image-url", "gallery"].includes(page) &&
+        selected?.type !== "image"
+      )
+        return ["main"];
+      if (page === "link" && selected?.type !== "link") return ["main"];
+      if (
+        ["text", "font", "color"].includes(page) &&
+        (!selected || selected.type === "image" || selected.type === "divider")
+      )
+        return ["main"];
+      return current;
+    });
+  }, [selection, currentSection, selected]);
   useEffect(() => {
     if (lastMenu.current !== page && panel === "format") {
       pane.current?.scrollTo({ top: 0 });

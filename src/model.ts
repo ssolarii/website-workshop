@@ -342,7 +342,7 @@ export function generate(site: SiteDocument, editing = false) {
     pageCss +
     "\n" +
     sectionsCss +
-    "\n@media (max-width: 600px) { main section[id] { grid-template-columns: minmax(0, 1fr); padding-inline: 24px; } }";
+    "\n@media (max-width: 600px) { main section[id] { grid-template-columns: minmax(0, 1fr) !important; padding-inline: 24px; } }";
   const document =
     '<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>' +
     escape(site.title) +
