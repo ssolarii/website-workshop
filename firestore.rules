@@ -1,0 +1,35 @@
+rules_version = '2';
+service cloud.firestore {
+ match /databases/{database}/documents {
+  function signedIn() { return request.auth != null; }
+  function validSite(id) {
+   return request.resource.data.site is map && request.resource.data.site.id == id && request.resource.data.site.version == 1;
+  }
+  function draftPath(id) { return /databases/$(database)/documents/drafts/$(id); }
+  match /drafts/{id} {
+   allow read, delete: if signedIn() && resource.data.owner == request.auth.uid;
+   allow create: if signedIn() && request.resource.data.owner == request.auth.uid && validSite(id);
+   allow update: if signedIn() && resource.data.owner == request.auth.uid && request.resource.data.owner == request.auth.uid && validSite(id);
+   match /media/{asset} {
+    function isPublished() {
+     let page = get(/databases/$(database)/documents/published/$(id));
+     return page != null && asset in page.data.assets;
+    }
+    allow get: if isPublished() || (signedIn() && get(draftPath(id)).data.owner == request.auth.uid);
+    allow list: if false;
+    allow create: if signedIn() && getAfter(draftPath(id)).data.owner == request.auth.uid && asset.matches('[0-9a-f]{64}') && request.resource.data.keys().hasOnly(['data']) && request.resource.data.data is string && request.resource.data.data.size() <= 850000 && request.resource.data.data.matches('^data:image/(webp|png|jpeg);base64,.*');
+    allow update: if signedIn() && getAfter(draftPath(id)).data.owner == request.auth.uid && request.resource.data == resource.data;
+   }
+  }
+  match /published/{id} {
+   allow get: if true;
+   allow list: if false;
+   function validPublication() {
+    return request.resource.data.keys().hasOnly(['owner', 'site', 'assets']) && request.resource.data.assets is list && request.resource.data.assets.size() <= 10 && validSite(id);
+   }
+   allow create: if signedIn() && request.resource.data.owner == request.auth.uid && get(draftPath(id)).data.owner == request.auth.uid && validPublication();
+   allow update: if signedIn() && resource.data.owner == request.auth.uid && request.resource.data.owner == request.auth.uid && validPublication();
+   allow delete: if signedIn() && resource.data.owner == request.auth.uid;
+  }
+ }
+}

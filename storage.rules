@@ -1,0 +1,10 @@
+rules_version = '2';
+service firebase.storage {
+ match /b/{bucket}/o {
+  match /images/{siteId}/{file} {
+   function owns() { return request.auth != null && firestore.get(/databases/(default)/documents/drafts/$(siteId)).data.owner == request.auth.uid; }
+   allow get: if owns() || ('images/' + siteId + '/' + file) in firestore.get(/databases/(default)/documents/published/$(siteId)).data.assets;
+   allow write: if owns() && request.resource.size <= 1000000 && request.resource.contentType == 'image/webp';
+  }
+ }
+}

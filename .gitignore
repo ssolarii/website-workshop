@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env.local
+.hallmark-upstream/
+*-debug.log
+.npm-tool/
+.npm-cache/
+test-results/

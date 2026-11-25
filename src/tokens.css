@@ -1,0 +1,26 @@
+:root {
+  --paper: #ffffff;
+  --desk: #eaeff2;
+  --surface: #f5f7f9;
+  --ink: #172233;
+  --muted: #536274;
+  --subtle: #66768a;
+  --line: #d9e1e8;
+  --line-strong: #b8c7d4;
+  --accent: #1f579e;
+  --accent-dark: #15467f;
+  --accent-soft: #e7eff9;
+  --icon-blue: #285c96;
+  --shadow: #1a314214;
+  --shadow-strong: #1a253530;
+  --red: #9a2f36;
+  --code-string: #226b50;
+  --code-keyword: #214c95;
+  --cover-sage: #dce6dc;
+  --cover-blue: #dce5f0;
+  --cover-sand: #ede2d5;
+  --transparent-ink: #0f1e3c60;
+  --font:
+    "Helvetica Now Display", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-code: "Cascadia Mono", Consolas, monospace;
+}
