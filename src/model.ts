@@ -3,7 +3,15 @@ import { resolveGalleryUrl, portableGalleryUrl } from "./images";
 
 export type ElementKind =
   "heading" | "paragraph" | "image" | "link" | "divider";
-export type SectionLayout = "stack" | "columns" | "split" | "split-reverse";
+export type SectionLayout =
+  | "stack"
+  | "columns"
+  | "split"
+  | "split-reverse"
+  | "three"
+  | "four"
+  | "banner"
+  | "feature";
 export type Element = {
   id: string;
   type: ElementKind;
@@ -18,21 +26,26 @@ export type Element = {
   weight?: 400 | 500 | 700;
   headingLevel?: 1 | 2;
   imageRef?: string;
+  imageWidth?: number;
+  imageRatio?: "auto" | "1 / 1" | "16 / 9" | "4 / 3";
 };
 export type Section = {
   id: string;
-  columns: 1 | 2;
+  columns: 1 | 2 | 3 | 4;
   background: string;
   padding: number;
   elements: Element[];
   layout?: SectionLayout;
   banner?: boolean;
+  backgroundImage?: Element;
+  autoContrast?: boolean;
 };
 export type SiteDocument = {
   version: 1;
   id: string;
   title: string;
   sections: Section[];
+  updatedAt?: number;
 };
 
 export const id = () => "w" + crypto.randomUUID();
@@ -61,6 +74,33 @@ export function element(type: ElementKind): Element {
 }
 
 export function section(layout: SectionLayout = "stack"): Section {
+  if (["three", "four", "banner", "feature"].includes(layout)) {
+    const count = layout === "three" ? 3 : layout === "four" ? 4 : 1;
+    return {
+      id: id(),
+      columns: count,
+      layout,
+      background: "#ffffff",
+      padding: 52,
+      banner: layout === "banner",
+      elements: (layout === "banner"
+        ? ["heading"]
+        : layout === "feature"
+          ? ["image", "heading", "paragraph"]
+          : Array(count).fill("image")
+      ).map((type, index) =>
+        type === "image"
+          ? {
+              ...element("image"),
+              src:
+                "gallery:" +
+                ["architecture.webp", "profile.webp", "event.webp"][index % 3],
+              alt: "Sample photograph",
+            }
+          : element(type as ElementKind),
+      ),
+    };
+  }
   const group =
     layout === "columns"
       ? ["image", "image"]
@@ -73,7 +113,17 @@ export function section(layout: SectionLayout = "stack"): Section {
     layout,
     background: "#ffffff",
     padding: 52,
-    elements: (group as ElementKind[]).map(element),
+    elements: (group as ElementKind[]).map((kind, index) =>
+      kind === "image"
+        ? {
+            ...element(kind),
+            src:
+              "gallery:" +
+              ["architecture.webp", "profile.webp", "event.webp"][index % 3],
+            alt: "Sample photograph",
+          }
+        : element(kind),
+    ),
   };
 }
 
@@ -309,6 +359,11 @@ function styleFor(item: Element) {
             ? "end"
             : "start"),
     );
+  if (item.type === "image") {
+    rules.push("width: " + bounded(item.imageWidth ?? 100, 10, 100, 100) + "%");
+    if (["1 / 1", "16 / 9", "4 / 3"].includes(item.imageRatio ?? ""))
+      rules.push("aspect-ratio: " + item.imageRatio, "object-fit: cover");
+  }
   return "#" + domId(item.id) + " { " + rules.join("; ") + "; }";
 }
 
@@ -326,7 +381,7 @@ export function generate(site: SiteDocument, editing = false) {
         "#" +
         domId(s.id) +
         " { display: grid; grid-template-columns: repeat(" +
-        (s.columns === 2 ? 2 : 1) +
+        ([1, 2, 3, 4].includes(s.columns) ? s.columns : 1) +
         ", minmax(0, 1fr)); padding-block: " +
         bounded(s.padding, 0, 120, 48) +
         "px; background: " +
@@ -334,7 +389,24 @@ export function generate(site: SiteDocument, editing = false) {
         ";" +
         banner +
         " }\n" +
-        s.elements.map(styleFor).join("\n")
+        s.elements.map(styleFor).join("\n") +
+        (s.backgroundImage && safeImage(s.backgroundImage.src)
+          ? "\n#" +
+            domId(s.id) +
+            " { background-image: " +
+            (s.autoContrast !== false
+              ? "linear-gradient(#000a, #000a), "
+              : "") +
+            "url(" +
+            JSON.stringify(safeImage(s.backgroundImage.src)).replace(
+              /</g,
+              "\\3c ",
+            ) +
+            "); background-size: cover; background-position: center; }" +
+            (s.autoContrast !== false
+              ? "\n#" + domId(s.id) + " :is(h1,h2,p,a) { color: #ffffff; }"
+              : "")
+          : "")
       );
     })
     .join("\n");

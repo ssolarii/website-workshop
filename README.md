@@ -4,6 +4,12 @@ Website Workshop is a single-page visual website editor. The blank starter opens
 
 ## Run locally
 
+Use **My sites** in the top-left corner to create, search, and reopen sites. Edits autosave to localStorage, with IndexedDB as the full-draft backup for larger image collections. The **Outline → Themes** menu applies a palette, typeface, and optional header photo; changes can be undone. Select a section in Outline to move or delete it.
+
+Insert includes text, image/text, two-, three-, and four-image layouts, headers, and full-width photos. In Format, image controls include width and cropping. Upload a JPEG, PNG, or WebP, drop a file onto the canvas, or choose **Use camera**. Camera permission is requested only when opening the camera and its stream stops when closed. Images are resized to at most 1600 pixels and compressed below 600 KB for the Firestore asset limit. Header backgrounds support uploads, starter photos, and HTTPS URLs, with automatic white text and a dark contrast overlay.
+
+**Second screen** opens a separate browser window with independently toggleable Preview, HTML, and QR panels. Edits synchronize while the editor stays open. The QR code appears only after successful publication and opens the published snapshot; unpublished edits remain private. Move the window to the other monitor using the operating system. Closing it does not affect drafts.
+
 Run `npm install` and `npm run dev`, then open http://127.0.0.1:5173/. Run `npm run build -- --base=./` for a production build and `npm test` for generator tests.
 
 The editor and generated pages use locally installed Helvetica Now Display, with Helvetica and Arial in the fallback stack. A separately licensed webfont is needed to serve Helvetica Now Display to visitors who lack it.
@@ -23,4 +29,3 @@ To test locally with emulators, use project `demo-website-workshop`, set `VITE_U
 - [Meeting by Beatriz Cattel](https://unsplash.com/photos/business-meeting-with-people-around-a-conference-table-3tCLyPBSQ5k)
 
 Photos are available under the [Unsplash License](https://unsplash.com/license).
-

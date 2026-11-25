@@ -39,6 +39,8 @@ import {
   type SectionLayout,
 } from "./model";
 import * as cloud from "./cloud";
+import { applyTheme } from "./themes";
+import { SecondScreen, type ScreenPayload } from "./SecondScreen";
 import "./style.css";
 
 function IconButton({
@@ -228,10 +230,28 @@ function Editor() {
   const session = useRef(id());
   const channel = useRef<BroadcastChannel | null>(null);
   const sourcePayload = useRef<SourcePayload | null>(null);
+  const screenPayload = useRef<ScreenPayload | null>(null);
+  const [siteSearch, setSiteSearch] = useState("");
 
   useEffect(() => {
     get<SiteDocument>("draft")
+      .catch(() => undefined)
       .then((draft) => {
+        try {
+          const activeId = localStorage.getItem("workshop:active");
+          const stored =
+            activeId &&
+            JSON.parse(
+              localStorage.getItem("workshop:site:" + activeId) || "null",
+            );
+          if (
+            stored?.version === 1 &&
+            (!draft || (stored.updatedAt ?? 0) > (draft.updatedAt ?? 0))
+          )
+            draft = stored;
+        } catch {
+          /* IndexedDB remains the fallback for large drafts. */
+        }
         if (draft?.version === 1) {
           current.current = draft;
           setSite(draft);
@@ -242,6 +262,8 @@ function Editor() {
     const peer = new BroadcastChannel(session.current);
     channel.current = peer;
     peer.onmessage = (event) => {
+      if (event.data?.type === "screen-ready" && screenPayload.current)
+        peer.postMessage({ type: "screen", data: screenPayload.current });
       if (event.data?.type === "ready" && sourcePayload.current)
         peer.postMessage({ type: "source", data: sourcePayload.current });
     };
@@ -315,7 +337,39 @@ function Editor() {
       });
   }, [generated, selection]);
 
+  useEffect(() => {
+    screenPayload.current = site ? { site, published } : null;
+    if (screenPayload.current)
+      channel.current?.postMessage({
+        type: "screen",
+        data: screenPayload.current,
+      });
+  }, [site, published]);
+  function secondScreen() {
+    const url = new URL(location.href);
+    url.hash = "";
+    url.search = "";
+    url.searchParams.set("screen", session.current);
+    const popup = window.open(
+      url,
+      "workshop-screen-" + session.current,
+      "width=1280,height=800",
+    );
+    if (!popup)
+      setStatus(
+        "Popup blocked. Allow popups for this site and try Second screen again.",
+      );
+    else popup.focus();
+  }
   function saveLocal(next: SiteDocument) {
+    next.updatedAt = Date.now();
+    try {
+      localStorage.setItem("workshop:site:" + next.id, JSON.stringify(next));
+      localStorage.setItem("workshop:active", next.id);
+    } catch {
+      /* Images and the full draft remain in IndexedDB when localStorage is full. */
+    }
+
     setMany([
       ["draft", next],
       ["site:" + next.id, next],
@@ -398,6 +452,8 @@ function Editor() {
       const match = draft.sections.find(({ id }) => id === selectedSection?.id);
       if (!match) return false;
       Object.assign(match, values);
+      for (const key of Object.keys(values) as (keyof Section)[])
+        if (values[key] === undefined) delete match[key];
       return true;
     });
   }
@@ -508,6 +564,15 @@ function Editor() {
     });
     select(newId, true);
   }
+  function removeSection(target: string) {
+    edit((draft) => {
+      const index = draft.sections.findIndex((s) => s.id === target);
+      if (index < 0) return false;
+      draft.sections.splice(index, 1);
+      return true;
+    });
+    setSelection("");
+  }
   function remove() {
     if (!selectedSection) return;
     edit((draft) => {
@@ -547,6 +612,7 @@ function Editor() {
         return true;
       }, "text:" + target);
     } else if (event.type === "text-end") editGroup.current = "";
+    else if (event.type === "file") void addImageFile(event.file, event.target);
     else if (event.type === "drop") reorder(event.from, event.to);
     else if (event.type === "insert") {
       if (!event.sectionId) {
@@ -563,39 +629,71 @@ function Editor() {
       );
     }
   }
-  async function upload(file: File) {
-    if (!selected || !site) return;
-    const siteId = site.id;
-    const target = selected.id;
-    const count = site.sections
-      .flatMap(({ elements }) => elements)
-      .filter(
-        (item) =>
-          item.id !== target &&
-          item.type === "image" &&
-          item.src.startsWith("data:image/"),
-      ).length;
-    if (count >= 10) {
+  async function addImageFile(
+    file: File,
+    target = selected?.id,
+    background = false,
+  ) {
+    const original = current.current;
+    if (!original || uploading) return;
+    const sectionId = selectedSection?.id;
+    const all = original.sections.flatMap((s) =>
+      s.backgroundImage ? [...s.elements, s.backgroundImage] : s.elements,
+    );
+    if (
+      all.filter(
+        (i) =>
+          (i.imageRef || i.src.startsWith("data:image/")) && i.id !== target,
+      ).length >= 10
+    ) {
       setStatus("Maximum ten uploaded images per site");
       return;
     }
     setUploading(true);
     try {
       const src = await compress(file);
-      if (current.current?.id === siteId)
-        patchAt(target, { src, alt: selected.alt, imageRef: undefined });
+      if (current.current?.id !== original.id) return;
+      edit((draft) => {
+        if (background) {
+          const s = draft.sections.find((s) => s.id === sectionId);
+          if (!s) return false;
+          s.backgroundImage = { ...element("image"), src };
+          s.autoContrast = true;
+          return true;
+        }
+        const existing = draft.sections
+          .flatMap((s) => s.elements)
+          .find((i) => i.id === target && i.type === "image");
+        if (existing) {
+          existing.src = src;
+          delete existing.imageRef;
+        } else {
+          const added = { ...element("image"), src, alt: "" };
+          const parent =
+            draft.sections.find(
+              (s) => s.id === target || s.elements.some((i) => i.id === target),
+            ) ?? draft.sections.at(-1);
+          if (parent && !parent.banner) parent.elements.push(added);
+          else draft.sections.push({ ...section(), elements: [added] });
+          select(added.id, true);
+        }
+        return true;
+      });
     } catch {
       setStatus("Could not add this image. Try a JPEG, PNG, or WebP.");
     } finally {
       setUploading(false);
     }
   }
+  const upload = (file: File) => addImageFile(file);
   async function download() {
     if (!site) return;
     const copy = structuredClone(site);
     await Promise.all(
       copy.sections
-        .flatMap(({ elements }) => elements)
+        .flatMap(({ elements, backgroundImage }) =>
+          backgroundImage ? [...elements, backgroundImage] : elements,
+        )
         .map(async (item) => {
           const source = resolveGalleryUrl(portableGalleryUrl(item.src));
           if (!source) return;
@@ -639,17 +737,30 @@ function Editor() {
     setDialog("sites");
     setBusy(true);
     try {
-      const localKeys = (await keys()).filter(
+      const localKeys = (await keys().catch(() => [])).filter(
         (key) => typeof key === "string" && key.startsWith("site:"),
       );
       const locals = (
-        await Promise.all(localKeys.map((key) => get<SiteDocument>(key)))
+        await Promise.all(
+          localKeys.map((key) => get<SiteDocument>(key).catch(() => undefined)),
+        )
       ).filter((draft): draft is SiteDocument => Boolean(draft));
       if (
         current.current &&
         !locals.some(({ id }) => id === current.current?.id)
       )
         locals.push(current.current);
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith("workshop:site:")) {
+          try {
+            const stored = JSON.parse(localStorage.getItem(key)!);
+            if (stored.version === 1 && !locals.some((d) => d.id === stored.id))
+              locals.push(stored);
+          } catch {}
+        }
+      }
+      locals.sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
       const entries = locals.map((draft) => ({ draft, cloud: false }));
       setSites(entries);
       if (cloud.configured) {
@@ -677,6 +788,7 @@ function Editor() {
     setSite(null);
     current.current = null;
     set("draft", null);
+    localStorage.removeItem("workshop:active");
     setStatus("");
     setPreview(false);
     setToolsOpen(false);
@@ -719,29 +831,62 @@ function Editor() {
   }
   const libraryDialog = dialog === "sites" && (
     <SiteDialog label="My sites" close={() => setDialog(null)}>
-      <div className="saved-sites">
-        {sites.map(({ draft, cloud: remote }) => (
-          <button
-            type="button"
-            key={draft.id}
-            disabled={busy}
-            onClick={() => {
-              if (!remote) {
-                openDraft(draft);
-                return;
-              }
-              setBusy(true);
-              cloud
-                .hydrate(draft)
-                .then(openDraft)
-                .catch(() => setDialogError("Could not restore this site."))
-                .finally(() => setBusy(false));
-            }}
-          >
-            <LayoutPanelTop size={17} />
-            {draft.title || "Untitled site"}
+      <label className="control">
+        Search sites
+        <input
+          value={siteSearch}
+          onChange={(e) => setSiteSearch(e.target.value)}
+          placeholder="Search by title"
+        />
+      </label>
+      <div className="site-starters">
+        {templates.map((name) => (
+          <button key={name} onClick={() => openDraft(template(name))}>
+            <Plus size={20} />
+            {name}
           </button>
         ))}
+      </div>
+      <h3>Recent sites</h3>
+      <div className="saved-sites">
+        {sites
+          .filter(({ draft }) =>
+            draft.title.toLowerCase().includes(siteSearch.toLowerCase()),
+          )
+          .map(({ draft, cloud: remote }) => (
+            <button
+              type="button"
+              key={draft.id}
+              disabled={busy}
+              onClick={() => {
+                if (!remote) {
+                  openDraft(draft);
+                  return;
+                }
+                setBusy(true);
+                cloud
+                  .hydrate(draft)
+                  .then(openDraft)
+                  .catch(() => setDialogError("Could not restore this site."))
+                  .finally(() => setBusy(false));
+              }}
+            >
+              <div className="site-thumbnail">
+                <iframe
+                  title={"Thumbnail: " + draft.title}
+                  tabIndex={-1}
+                  sandbox=""
+                  srcDoc={viewerDocument(draft, true)}
+                />
+              </div>
+              <strong>{draft.title || "Untitled site"}</strong>
+              <small>
+                {draft.updatedAt
+                  ? new Date(draft.updatedAt).toLocaleDateString()
+                  : "Saved on this device"}
+              </small>
+            </button>
+          ))}
       </div>
       {!busy && !sites.length && <p>No saved sites yet.</p>}
       {busy && <p role="status">Opening sites…</p>}
@@ -800,6 +945,9 @@ function Editor() {
     >
       <header className="topbar">
         <div className="brand">
+          <IconButton label="My sites" onClick={showSites}>
+            <FolderOpen size={19} />
+          </IconButton>
           <span className="app-mark" aria-label="Website Workshop">
             <LayoutPanelTop size={19} />
           </span>
@@ -934,9 +1082,9 @@ function Editor() {
       <div className={"workspace" + (preview ? " preview-mode" : "")}>
         <div className="main-column">
           <div className="workspace-bar">
-            <div className="workspace-label">
-              {preview ? "Preview" : "Home"}
-            </div>
+            <button className="quiet-button" onClick={secondScreen}>
+              <Monitor size={16} /> Second screen
+            </button>
             <div className="device-group" aria-label="Canvas size" role="group">
               <IconButton
                 label="Desktop"
@@ -1003,6 +1151,11 @@ function Editor() {
               move={move}
               duplicate={duplicate}
               remove={remove}
+              removeSection={removeSection}
+              applyTheme={(name) => edit((draft) => applyTheme(draft, name))}
+              uploadBackground={(file) =>
+                addImageFile(file, selectedSection?.backgroundImage?.id, true)
+              }
             />
           </>
         )}
@@ -1126,6 +1279,8 @@ function App() {
     addEventListener("hashchange", listener);
     return () => removeEventListener("hashchange", listener);
   }, []);
+  const screenId = new URLSearchParams(location.search).get("screen");
+  if (screenId) return <SecondScreen session={screenId} />;
   if (sourceId) return <SourceWindow session={sourceId} />;
   return hash ? <PublicSite key={hash} siteId={hash} /> : <Editor />;
 }

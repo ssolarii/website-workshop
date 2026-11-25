@@ -1020,3 +1020,174 @@ h2 {
     display: none;
   }
 }
+.themes {
+  margin: 12px 0 24px;
+}
+.themes summary {
+  cursor: pointer;
+  padding: 12px 0;
+}
+.themes summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.theme-list {
+  display: grid;
+  gap: 8px;
+}
+.theme-list button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  text-align: left;
+}
+.theme-list span {
+  padding: 9px 18px;
+  border-radius: 3px;
+}
+.camera-capture {
+  padding: 16px;
+  border-bottom: 1px solid var(--line);
+}
+.camera-capture video {
+  width: 100%;
+  background: var(--ink);
+}
+.camera-capture button {
+  margin: 8px 4px 0 0;
+}
+.site-starters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 24px 0;
+}
+.site-starters button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+}
+.saved-sites {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 18px;
+}
+.saved-sites > button {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  text-align: left;
+  gap: 8px;
+  padding: 0 0 14px;
+  overflow: hidden;
+}
+.saved-sites strong,
+.saved-sites small {
+  padding-inline: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.site-thumbnail {
+  height: 145px;
+  width: 100%;
+  overflow: hidden;
+  pointer-events: none;
+  border-bottom: 1px solid var(--line);
+}
+.site-thumbnail iframe {
+  width: 900px;
+  height: 650px;
+  transform: scale(0.24);
+  transform-origin: top left;
+  border: 0;
+}
+.site-dialog:has(.saved-sites) {
+  width: min(1100px, 94%);
+  max-width: 1100px;
+}
+.second-screen {
+  min-height: 100dvh;
+  background: var(--desk);
+  color: var(--ink);
+  padding: clamp(16px, 2vw, 36px);
+}
+.second-screen > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+.second-screen nav {
+  display: flex;
+  gap: 8px;
+}
+.second-screen button {
+  padding: 9px 15px;
+}
+.second-screen button[aria-pressed="true"] {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.screen-panels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  max-width: 2200px;
+  margin: auto;
+}
+.screen-panels > section {
+  min-width: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  padding: 16px;
+}
+.screen-panels h2 {
+  font-size: 16px;
+  margin: 0 0 14px;
+}
+.screen-preview {
+  flex: 3 1 480px;
+}
+.screen-preview iframe {
+  width: 100%;
+  height: max(520px, calc(100dvh - 160px));
+  border: 0;
+}
+.screen-code {
+  flex: 2 1 340px;
+}
+.screen-code pre {
+  font: 13px/1.7 var(--font-code);
+  height: calc(100dvh - 170px);
+  min-height: 350px;
+  overflow: auto;
+  margin: 0;
+}
+.screen-qr {
+  flex: 0 1 240px;
+  align-self: start;
+  text-align: center;
+}
+.screen-qr img {
+  width: 100%;
+  max-width: 320px;
+  height: auto;
+}
+.screen-qr a {
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+@media (min-width: 1700px) {
+  .screen-code pre {
+    font-size: 16px;
+  }
+  .screen-qr {
+    flex-basis: 320px;
+  }
+}

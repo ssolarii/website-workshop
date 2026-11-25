@@ -36,6 +36,7 @@ export function viewerDocument(site: SiteDocument, inFrame = false) {
 }
 
 export type CanvasMessage =
+  | { type: "file"; file: File; target?: string }
   | { type: "select"; id: string; openFormat?: boolean }
   | { type: "text"; id: string; text: string }
   | { type: "text-end" }

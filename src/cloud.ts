@@ -84,7 +84,9 @@ function validSiteId(value: string) {
 const validImageId = (value: string) => /^[0-9a-f]{64}$/.test(value);
 const pictureElements = (site: SiteDocument) =>
   site.sections
-    .flatMap(({ elements }) => elements)
+    .flatMap(({ elements, backgroundImage }) =>
+      backgroundImage ? [...elements, backgroundImage] : elements,
+    )
     .filter(({ type }) => type === "image");
 const uploadedImages = new Set<string>();
 

@@ -144,10 +144,21 @@ document.addEventListener("dragstart", (event) => {
     );
 });
 document.addEventListener("dragover", (event) => {
-  if (event.dataTransfer.types.includes("application/x-workshop-node"))
+  if (
+    event.dataTransfer.types.includes("Files") ||
+    event.dataTransfer.types.includes("application/x-workshop-node")
+  )
     event.preventDefault();
 });
 document.addEventListener("drop", (event) => {
+  if (event.dataTransfer.files[0]) {
+    event.preventDefault();
+    send("file", {
+      file: event.dataTransfer.files[0],
+      target: event.target.closest("[data-node]")?.dataset.node,
+    });
+    return;
+  }
   const from = event.dataTransfer.getData("application/x-workshop-node");
   const to = event.target.closest("[data-node]")?.dataset.node;
   if (from && to) {

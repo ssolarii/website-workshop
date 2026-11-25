@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { template, generate, safeLink } from "./model";
+import { template, generate, safeLink, section, element } from "./model";
 describe("website output", () => {
   it("escapes visitor text", () => {
     const s = template("Personal introduction");
@@ -36,5 +36,40 @@ describe("style and link boundaries", () => {
     const out = generate(s);
     expect(out.css).toContain("80px");
     expect(out.css).not.toContain("<script>");
+  });
+});
+
+import { applyTheme } from "./themes";
+describe("themes and media layouts", () => {
+  it("supports four columns and mobile stacking", () => {
+    const site = template("Blank");
+    site.sections.push(section("four"));
+    const result = generate(site);
+    expect(result.css).toContain("repeat(4,");
+    expect(result.html.match(/<img /g)).toHaveLength(4);
+    expect(result.css).toContain("main section[id]");
+  });
+  it("applies header images and automatic text contrast", () => {
+    const site = template("Blank");
+    applyTheme(site, "Natural");
+    const result = generate(site);
+    expect(result.css).toContain("linear-gradient(#000a, #000a)");
+    expect(result.css).toContain("color: #ffffff");
+    expect(result.css).toContain("Georgia");
+  });
+  it("escapes background CSS and clamps image sizes", () => {
+    const site = template("Blank");
+    site.sections[0].backgroundImage = {
+      ...element("image"),
+      src: "https://example.com/</style><script>.jpg",
+    };
+    site.sections[0].elements.push({
+      ...element("image"),
+      imageWidth: 999,
+      imageRatio: "1 / 1",
+    });
+    expect(generate(site).document).not.toContain("<script>");
+    expect(generate(site).css).toContain("width: 100%");
+    expect(generate(site).css).toContain("aspect-ratio: 1 / 1");
   });
 });

@@ -24,6 +24,9 @@ import {
   Upload,
   X,
 } from "lucide-react";
+import { CameraCapture } from "./CameraCapture";
+import { themes } from "./themes";
+import { element } from "./model";
 import { gallery, galleryUrl } from "./images";
 import {
   safeImage,
@@ -45,6 +48,10 @@ const layouts: { layout: SectionLayout; label: string }[] = [
   { layout: "split", label: "Image + text" },
   { layout: "split-reverse", label: "Text + image" },
   { layout: "columns", label: "Two images" },
+  { layout: "three", label: "Three images" },
+  { layout: "four", label: "Four images" },
+  { layout: "banner", label: "Header" },
+  { layout: "feature", label: "Full-width image" },
 ];
 const elementNames: Record<ElementKind, string> = {
   heading: "Heading",
@@ -119,6 +126,9 @@ type Props = {
   move: (delta: number) => void;
   duplicate: () => void;
   remove: () => void;
+  removeSection: (id: string) => void;
+  applyTheme: (name: string) => void;
+  uploadBackground: (file: File) => void;
 };
 
 function LayoutArt({ layout }: { layout: SectionLayout }) {
@@ -138,6 +148,19 @@ function LayoutArt({ layout }: { layout: SectionLayout }) {
     <span className="layout-art" aria-hidden="true">
       {layout === "stack" ? (
         copy
+      ) : layout === "three" || layout === "four" ? (
+        Array.from({ length: layout === "three" ? 3 : 4 }, (_, index) => (
+          <span className="layout-picture" key={index}>
+            <ImageIcon size={13} />
+          </span>
+        ))
+      ) : layout === "feature" ? (
+        picture
+      ) : layout === "banner" ? (
+        <span className="layout-copy">
+          <strong>T</strong>
+          <i />
+        </span>
       ) : layout === "columns" ? (
         <>
           {picture}
@@ -235,11 +258,17 @@ export function Inspector(props: Props) {
   const page = path.at(-1) ?? "main";
   const pane = useRef<HTMLDivElement>(null);
   const upload = useRef<HTMLInputElement>(null);
+  const camera = useRef<HTMLInputElement>(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
   const lastMenu = useRef(page);
   const go = (page: FormatPage) => setPath((parents) => [...parents, page]);
   const back = () =>
     setPath((parents) => (parents.length > 1 ? parents.slice(0, -1) : parents));
 
+  useEffect(() => {
+    setPath(["main"]);
+    setCameraOpen(false);
+  }, [selection]);
   useEffect(() => {
     if (props.formatEntry > 0 && selected?.type === "image")
       setPath(["main", "image"]);
@@ -343,6 +372,15 @@ export function Inspector(props: Props) {
           <MenuRow icon={<PanelTop size={17} />} onClick={() => go("section")}>
             Section settings
           </MenuRow>
+          {!selected && (
+            <button
+              className="danger panel-row"
+              onClick={() => props.removeSection(currentSection.id)}
+            >
+              <Trash2 size={17} />
+              Delete section
+            </button>
+          )}
           <MenuRow
             icon={<SlidersHorizontal size={17} />}
             onClick={() => go("actions")}
@@ -432,6 +470,13 @@ export function Inspector(props: Props) {
     if (page === "section")
       return (
         <>
+          <button
+            className="danger panel-row"
+            onClick={() => props.removeSection(currentSection.id)}
+          >
+            <Trash2 size={17} />
+            Delete section
+          </button>
           <MenuRow
             icon={<Columns2 size={17} />}
             value={currentSection.columns === 1 ? "1 column" : "2 columns"}
@@ -479,16 +524,103 @@ export function Inspector(props: Props) {
           >
             Two columns
           </button>
+          {([3, 4] as const).map((columns) => (
+            <button
+              key={columns}
+              aria-pressed={currentSection.columns === columns}
+              onClick={() =>
+                props.patchSection({
+                  columns,
+                  layout: columns === 3 ? "three" : "four",
+                })
+              }
+            >
+              {columns === 3 ? "Three columns" : "Four columns"}
+            </button>
+          ))}
         </div>
       );
     if (page === "background")
       return (
-        <Swatches
-          choices={backgrounds}
-          color={currentSection.background}
-          select={(background) => props.patchSection({ background })}
-          label="Custom background color"
-        />
+        <>
+          {" "}
+          <Swatches
+            choices={backgrounds}
+            color={currentSection.background}
+            select={(background) => props.patchSection({ background })}
+            label="Custom background color"
+          />
+          <label className="control">
+            Header image
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={(e) => {
+                if (e.target.files?.[0])
+                  props.uploadBackground(e.target.files[0]);
+                e.target.value = "";
+              }}
+            />
+          </label>
+          <label className="control">
+            Background image URL
+            <input
+              type="url"
+              placeholder="https://example.com/photo.jpg"
+              value={
+                currentSection.backgroundImage?.src.startsWith("https:")
+                  ? currentSection.backgroundImage.src
+                  : ""
+              }
+              onChange={(e) =>
+                props.patchSection({
+                  backgroundImage: { ...element("image"), src: e.target.value },
+                  autoContrast: true,
+                })
+              }
+            />
+          </label>
+          <div className="photo-library">
+            {gallery.slice(0, 3).map((photo) => (
+              <button
+                key={photo.path}
+                onClick={() =>
+                  props.patchSection({
+                    backgroundImage: {
+                      ...element("image"),
+                      src: "gallery:" + photo.path,
+                    },
+                    autoContrast: true,
+                  })
+                }
+              >
+                <img src={galleryUrl(photo.path)} alt="" />
+                {photo.name}
+              </button>
+            ))}
+          </div>
+          {currentSection.backgroundImage && (
+            <>
+              <label className="control">
+                Automatic contrast
+                <input
+                  type="checkbox"
+                  checked={currentSection.autoContrast !== false}
+                  onChange={(e) =>
+                    props.patchSection({ autoContrast: e.target.checked })
+                  }
+                />
+              </label>
+              <button
+                onClick={() =>
+                  props.patchSection({ backgroundImage: undefined })
+                }
+              >
+                Remove background image
+              </button>
+            </>
+          )}
+        </>
       );
     if (page === "spacing")
       return (
@@ -520,6 +652,42 @@ export function Inspector(props: Props) {
             <Upload size={16} />
             {props.uploading ? "Adding image…" : "Upload image"}
           </button>
+          <button
+            className="upload-button"
+            onClick={() => {
+              if (typeof navigator.mediaDevices?.getUserMedia === "function")
+                setCameraOpen(true);
+              else camera.current?.click();
+            }}
+          >
+            Use camera
+          </button>
+          <label className="control">
+            Image width ({selected.imageWidth ?? 100}%)
+            <input
+              type="range"
+              min="10"
+              max="100"
+              value={selected.imageWidth ?? 100}
+              onChange={(e) => props.patch({ imageWidth: +e.target.value })}
+            />
+          </label>
+          <label className="control">
+            Crop
+            <select
+              value={selected.imageRatio ?? "auto"}
+              onChange={(e) =>
+                props.patch({
+                  imageRatio: e.target.value as typeof selected.imageRatio,
+                })
+              }
+            >
+              <option value="auto">Original</option>
+              <option value="1 / 1">Square</option>
+              <option value="16 / 9">Wide</option>
+              <option value="4 / 3">Landscape</option>
+            </select>
+          </label>
           <MenuRow icon={<ImageIcon size={17} />} onClick={() => go("gallery")}>
             Image library
           </MenuRow>
@@ -646,6 +814,15 @@ export function Inspector(props: Props) {
     <aside
       className={"inspector" + (open ? " is-open" : "")}
       aria-label="Editor tools"
+      onDragOver={(e) => {
+        if (e.dataTransfer.types.includes("Files")) e.preventDefault();
+      }}
+      onDrop={(e) => {
+        if (e.dataTransfer.files[0]) {
+          e.preventDefault();
+          props.upload(e.dataTransfer.files[0]);
+        }
+      }}
       onKeyDown={(event) => {
         if (event.key === "Escape") {
           if (panel === "format" && page !== "main") back();
@@ -654,6 +831,21 @@ export function Inspector(props: Props) {
         }
       }}
     >
+      {cameraOpen && (
+        <CameraCapture add={props.upload} close={() => setCameraOpen(false)} />
+      )}
+      <input
+        ref={camera}
+        className="upload-input"
+        aria-label="Take photo"
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={(e) => {
+          if (e.target.files?.[0]) props.upload(e.target.files[0]);
+          e.target.value = "";
+        }}
+      />
       <nav className="tool-tabs" aria-label="Editor panels">
         {(
           [
@@ -731,6 +923,24 @@ export function Inspector(props: Props) {
                 <Plus size={19} />
               </button>
             </div>
+            <details className="themes">
+              <summary>Themes</summary>
+              <div className="theme-list">
+                {themes.map((theme) => (
+                  <button
+                    key={theme.name}
+                    onClick={() => props.applyTheme(theme.name)}
+                  >
+                    <span
+                      style={{ background: theme.header, color: theme.ink }}
+                    >
+                      Aa
+                    </span>
+                    {theme.name}
+                  </button>
+                ))}
+              </div>
+            </details>
             <ol className="outline-list">
               {props.sections.map((section, index) => (
                 <li
@@ -798,6 +1008,14 @@ export function Inspector(props: Props) {
                   }}
                 >
                   <ArrowDown size={17} />
+                </button>
+                <button
+                  className="icon-button danger"
+                  aria-label="Delete section"
+                  title="Delete section"
+                  onClick={() => props.removeSection(currentSection.id)}
+                >
+                  <Trash2 size={17} />
                 </button>
               </div>
             )}
